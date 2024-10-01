@@ -1,9 +1,12 @@
 import dotenv from "dotenv";
 import connectDB from "./db/index.js";
+import express from "express";
 
 dotenv.config({
     path: './env'
 })
+
+const app = express();
 
 connectDB()
     .then(() => {
@@ -12,5 +15,5 @@ connectDB()
         });
     })
     .catch((error) => {
-        console.log("Error: MongoDB connection failed");
+        console.log("Error: MongoDB connection failed",error);
     });
