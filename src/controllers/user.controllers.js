@@ -3,12 +3,12 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId);
         const accessToken = user.generateAccessToken();
-        console.log("🚀 ~ generateAccessAndRefreshToken ~ accessToken:", accessToken)
         const refreshToken = user.generateRefreshAccessToken();
 
         user.refreshToken = refreshToken;
@@ -166,4 +166,51 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 })
 
-export { registerUser, userLogin, logoutUser }
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incomingRrefreshToken = req.cookie.refreshToken || req.body.refreshToken;
+
+    if (incomingRrefreshToken) {
+        throw new ApiError(401, 'unauthorized request');
+    }
+
+    try {
+        const decodedToken = jwt.verify(
+            incomingRrefreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        )
+
+        const user = User.findById(decodedToken?._id);
+
+        if (!user) {
+            throw new ApiError(401, 'Invalid refresh token');
+        }
+
+        if (incomingRrefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, 'Refresh token is expired or used');
+        }
+
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+
+        const { accessToken, newRefreshToken } = await generateAccessAndRefreshToken(user._id);
+
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(
+                new ApiResponse(200, { accessToken, newRefreshToken }, "Access Token refresh")
+            )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid refresh token");
+    }
+})
+
+export {
+    registerUser,
+    userLogin,
+    logoutUser,
+    refreshAccessToken
+}
