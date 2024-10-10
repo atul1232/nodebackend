@@ -8,6 +8,7 @@ const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId);
         const accessToken = user.generateAccessToken();
+        console.log("🚀 ~ generateAccessAndRefreshToken ~ accessToken:", accessToken)
         const refreshToken = user.generateRefreshAccessToken();
 
         user.refreshToken = refreshToken;
@@ -92,7 +93,7 @@ const userLogin = asyncHandler(async (req, res) => {
 
     const { username, email, password } = req.body;
 
-    if (!username || !email) {
+    if (!(username || email)) {
         throw new ApiError(400, 'username or email is required');
     }
 
@@ -114,7 +115,6 @@ const userLogin = asyncHandler(async (req, res) => {
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
-
     const loggedInUser = await User.findById(user._id)
         .select("-password -refreshToken");
 
